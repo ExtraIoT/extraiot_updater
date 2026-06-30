@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Extra IOT Updater",
+        "description": "Enter your Extra IOT server and license key.",
+        "data": {
+          "server_url": "Server URL",
+          "license_key": "License key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the update server.",
+      "invalid_license": "License key was rejected (inactive or unknown)."
+    },
+    "abort": {
+      "already_configured": "This license is already configured."
+    }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "Restart required for {name}",
+      "description": "{name} was updated to {version}. Restart Home Assistant to load the new version."
+    }
+  },
+  "services": {
+    "check_now": {
+      "name": "Check for updates now",
+      "description": "Force an immediate poll of the Extra IOT update gateway."
+    }
+  }
+}

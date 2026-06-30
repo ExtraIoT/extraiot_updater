@@ -1,0 +1,3 @@
+check_now:
+  name: Check for updates now
+  description: Force an immediate poll of the Extra IOT update gateway.

@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Extra IOT Updater",
+        "description": "Ingresa tu servidor Extra IOT y tu clave de licencia.",
+        "data": {
+          "server_url": "URL del servidor",
+          "license_key": "Clave de licencia"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se pudo conectar con el servidor de actualizaciones.",
+      "invalid_license": "La clave de licencia fue rechazada (inactiva o desconocida)."
+    },
+    "abort": {
+      "already_configured": "Esta licencia ya está configurada."
+    }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "Se requiere reinicio para {name}",
+      "description": "{name} se actualizó a {version}. Reinicia Home Assistant para cargar la nueva versión."
+    }
+  },
+  "services": {
+    "check_now": {
+      "name": "Buscar actualizaciones ahora",
+      "description": "Fuerza una consulta inmediata al servidor de actualizaciones de Extra IOT."
+    }
+  }
+}
