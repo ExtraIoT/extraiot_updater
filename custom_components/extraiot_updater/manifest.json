@@ -1,0 +1,12 @@
+{
+  "domain": "extraiot_updater",
+  "name": "Extra IOT Updater",
+  "version": "1.0.0",
+  "documentation": "https://updates.extraiot.com.mx",
+  "issue_tracker": "https://github.com/ExtraIoT/extraiot_updater/issues",
+  "codeowners": ["@extraiot"],
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "integration_type": "service",
+  "requirements": []
+}
