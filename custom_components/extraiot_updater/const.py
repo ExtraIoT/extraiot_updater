@@ -14,9 +14,9 @@ DEFAULT_SERVER_URL = "https://updates.extraiot.com.mx"
 UPDATE_INTERVAL = timedelta(hours=6)
 
 # Embedded Ed25519 PUBLIC key (base64 of the raw 32 bytes). Verification only.
-# !!! REPLACE with your production public key from genkeys.py before release.
-# This value matches the Phase 1 test keypair so the bundled example works.
-RELEASE_PUBLIC_KEY_B64 = "m1XwDpPQHJqIqxVoSBjCM8zFpjqohLzoiFWtbyqBpW0="
+# PRODUCTION key. The matching private key lives ONLY on the self-hosted runner.
+# Rotating it means re-signing existing releases and shipping an updater update.
+RELEASE_PUBLIC_KEY_B64 = "csoZRvS+caIRtuBHKxjBSlMpZyXn8VDnGPXAytsfyoE="
 
 # Where client integrations are installed.
 CUSTOM_COMPONENTS = "custom_components"
