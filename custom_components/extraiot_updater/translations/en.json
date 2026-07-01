@@ -18,6 +18,19 @@
       "already_configured": "This license is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Extra IOT file access",
+        "description": "Admin-gated read/write API for files under /config. Every request also requires the shared key and (if set) an allowed source IP. Leave disabled unless Extra IOT tooling needs file access.",
+        "data": {
+          "file_access_enabled": "Enable file access API",
+          "file_access_key": "Shared secret (sent as the X-EIOT-File-Key header)",
+          "file_access_allowed_ips": "Allowed source IPs / CIDRs (comma-separated; blank = any source)"
+        }
+      }
+    }
+  },
   "issues": {
     "restart_required": {
       "title": "Restart required for {name}",
