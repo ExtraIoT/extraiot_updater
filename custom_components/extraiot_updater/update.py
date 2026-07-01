@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -13,11 +12,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CUSTOM_COMPONENTS, DOMAIN, RELEASE_PUBLIC_KEY_B64
+from .const import (
+    CUSTOM_COMPONENTS,
+    DOMAIN,
+    NOT_INSTALLED_VERSION,
+    RELEASE_PUBLIC_KEY_B64,
+)
 from .coordinator import ExtraIotCoordinator
 from .installer import InstallError, install_package, read_installed_version
 
@@ -32,14 +37,27 @@ async def async_setup_entry(
 
     @callback
     def _sync_entities() -> None:
-        new = []
-        for domain in coordinator.data or {}:
-            if domain in known:
-                continue
+        current = set(coordinator.data or {})
+
+        added = []
+        for domain in current - known:
             known.add(domain)
-            new.append(ExtraIotUpdateEntity(coordinator, domain))
-        if new:
-            async_add_entities(new)
+            added.append(ExtraIotUpdateEntity(coordinator, domain))
+        if added:
+            async_add_entities(added)
+
+        # Remove entities whose integration is no longer entitled (e.g. the
+        # license lost access). Otherwise they linger as stale "unknown".
+        orphaned = known - current
+        if orphaned:
+            registry = er.async_get(hass)
+            for domain in orphaned:
+                known.discard(domain)
+                ent_id = registry.async_get_entity_id(
+                    "update", DOMAIN, f"{DOMAIN}_{domain}"
+                )
+                if ent_id:
+                    registry.async_remove(ent_id)
 
     _sync_entities()
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
@@ -70,8 +88,10 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
 
     @property
     def installed_version(self) -> str | None:
+        # Report a sentinel (0.0.0) when not yet on disk, so Home Assistant shows
+        # the integration as an available install rather than "unknown".
         cc = Path(self.hass.config.path(CUSTOM_COMPONENTS))
-        return read_installed_version(cc, self._domain)
+        return read_installed_version(cc, self._domain) or NOT_INSTALLED_VERSION
 
     @property
     def latest_version(self) -> str | None:
@@ -80,7 +100,7 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
     @property
     def release_summary(self) -> str | None:
         notes = self._latest.get("changelog")
-        return (notes[:255] if notes else None)
+        return notes[:255] if notes else None
 
     async def async_release_notes(self) -> str | None:
         return self._latest.get("changelog")
@@ -123,6 +143,8 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
         finally:
             await self.hass.async_add_executor_job(_cleanup, tmp)
 
+        # A prior "removed" notice no longer applies.
+        ir.async_delete_issue(self.hass, DOMAIN, f"removed_{self._domain}")
         # New Python code only loads on restart.
         ir.async_create_issue(
             self.hass,

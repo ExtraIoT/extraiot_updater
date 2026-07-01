@@ -1,3 +1,15 @@
 check_now:
   name: Check for updates now
   description: Force an immediate poll of the Extra IOT update gateway.
+
+uninstall:
+  name: Uninstall integration
+  description: Remove an installed Extra IOT integration and prompt a restart.
+  fields:
+    domain:
+      name: Integration domain
+      description: Domain of the integration to remove (e.g. extraiot_hikcentral).
+      required: true
+      example: extraiot_hikcentral
+      selector:
+        text:

@@ -18,16 +18,43 @@
       "already_configured": "Esta licencia ya está configurada."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Acceso a archivos de Extra IOT",
+        "description": "API de lectura/escritura de archivos bajo /config, restringida a administradores. Cada solicitud requiere además la clave compartida y (si se configura) una IP de origen permitida. Déjalo deshabilitado salvo que las herramientas de Extra IOT necesiten acceso a archivos.",
+        "data": {
+          "file_access_enabled": "Habilitar API de acceso a archivos",
+          "file_access_key": "Clave secreta (enviada en el encabezado X-EIOT-File-Key)",
+          "file_access_allowed_ips": "IPs/CIDRs de origen permitidos (separados por comas; vacío = cualquier origen)"
+        }
+      }
+    }
+  },
   "issues": {
     "restart_required": {
       "title": "Se requiere reinicio para {name}",
       "description": "{name} se actualizó a {version}. Reinicia Home Assistant para cargar la nueva versión."
+    },
+    "removed_restart_required": {
+      "title": "Se requiere reinicio para {name}",
+      "description": "{name} se eliminó. Reinicia Home Assistant para completar la desinstalación."
     }
   },
   "services": {
     "check_now": {
       "name": "Buscar actualizaciones ahora",
       "description": "Fuerza una consulta inmediata al servidor de actualizaciones de Extra IOT."
+    },
+    "uninstall": {
+      "name": "Desinstalar integración",
+      "description": "Elimina una integración de Extra IOT instalada y solicita un reinicio.",
+      "fields": {
+        "domain": {
+          "name": "Dominio de la integración",
+          "description": "Dominio de la integración a eliminar (p. ej. extraiot_hikcentral)."
+        }
+      }
     }
   }
 }
