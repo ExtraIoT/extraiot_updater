@@ -20,3 +20,14 @@ RELEASE_PUBLIC_KEY_B64 = "csoZRvS+caIRtuBHKxjBSlMpZyXn8VDnGPXAytsfyoE="
 
 # Where client integrations are installed.
 CUSTOM_COMPONENTS = "custom_components"
+
+# --- Gated file-access API (see file_api.py) -------------------------------
+# All optional; configured via the integration's Options flow. The endpoint is
+# OFF unless CONF_FILE_ENABLED is true, and always requires the shared key +
+# admin token (+ source allowlist if set).
+CONF_FILE_ENABLED = "file_access_enabled"
+CONF_FILE_KEY = "file_access_key"
+CONF_FILE_ALLOWED_IPS = "file_access_allowed_ips"
+
+FILE_API_URL = "/api/extraiot_updater/files"
+FILE_API_MAX_BYTES = 5 * 1024 * 1024  # 5 MB cap on read + write
