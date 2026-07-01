@@ -74,8 +74,6 @@ def install_package(
         new_dir = staging / domain
         if not (new_dir / "manifest.json").is_file():
             raise InstallError("extracted package missing manifest.json")
-
-        # Move current aside, swap new in. Roll back if the swap fails.
         if backup.exists():
             shutil.rmtree(backup)
         if target.exists():
@@ -84,11 +82,24 @@ def install_package(
             os.replace(new_dir, target)
         except OSError as err:
             if backup.exists():
-                os.replace(backup, target)  # restore
+                os.replace(backup, target)
             raise InstallError(f"swap failed: {err}") from err
-
-        # Success: drop the backup.
         if backup.exists():
             shutil.rmtree(backup, ignore_errors=True)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
+
+
+def uninstall_package(custom_components: Path, domain: str) -> bool:
+    """Remove an installed integration, keeping a one-slot backup.
+
+    Returns True if something was removed, False if it wasn't installed.
+    """
+    target = custom_components / domain
+    if not target.exists():
+        return False
+    backup = custom_components / f".{domain}.removed"
+    if backup.exists():
+        shutil.rmtree(backup, ignore_errors=True)
+    os.replace(target, backup)  # atomic move aside (acts as backup)
+    return True

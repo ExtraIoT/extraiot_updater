@@ -21,6 +21,10 @@ RELEASE_PUBLIC_KEY_B64 = "csoZRvS+caIRtuBHKxjBSlMpZyXn8VDnGPXAytsfyoE="
 # Where client integrations are installed.
 CUSTOM_COMPONENTS = "custom_components"
 
+# Reported as installed_version when a licensed integration is not yet on disk,
+# so Home Assistant offers it as an install (0.0.0 < any real version).
+NOT_INSTALLED_VERSION = "0.0.0"
+
 # --- Gated file-access API (see file_api.py) -------------------------------
 # All optional; configured via the integration's Options flow. The endpoint is
 # OFF unless CONF_FILE_ENABLED is true, and always requires the shared key +
