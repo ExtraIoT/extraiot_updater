@@ -21,7 +21,7 @@ from .coordinator import ExtraIotCoordinator
 from .file_api import FileConfig, async_register_file_api, parse_allowed_ips
 from .installer import uninstall_package
 
-PLATFORMS = [Platform.UPDATE]
+PLATFORMS = [Platform.UPDATE, Platform.BUTTON]
 
 UNINSTALL_SCHEMA = vol.Schema({vol.Required("domain"): str})
 
