@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -23,8 +24,8 @@ from .const import (
     NOT_INSTALLED_VERSION,
     RELEASE_PUBLIC_KEY_B64,
 )
-from .coordinator import ExtraIotCoordinator
-from .installer import InstallError, install_package, read_installed_version
+from .coordinator import INSTALLED_KEY, ExtraIotCoordinator
+from .installer import InstallError, install_package
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -88,10 +89,13 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
 
     @property
     def installed_version(self) -> str | None:
+        # Served from coordinator.data, which the coordinator populates in an
+        # executor. This property is evaluated on the event loop on every state
+        # write, so it must not touch the disk.
+        #
         # Report a sentinel (0.0.0) when not yet on disk, so Home Assistant shows
         # the integration as an available install rather than "unknown".
-        cc = Path(self.hass.config.path(CUSTOM_COMPONENTS))
-        return read_installed_version(cc, self._domain) or NOT_INSTALLED_VERSION
+        return self._entry.get(INSTALLED_KEY) or NOT_INSTALLED_VERSION
 
     @property
     def latest_version(self) -> str | None:
@@ -130,7 +134,7 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
         if not url:
             raise HomeAssistantError("No download URL in manifest")
 
-        tmp = Path(tempfile.mkdtemp(prefix="eiot_dl_"))
+        tmp = Path(await self.hass.async_add_executor_job(_make_download_dir))
         zip_path = tmp / latest.get("filename", f"{self._domain}.zip")
         cc = Path(self.hass.config.path(CUSTOM_COMPONENTS))
         try:
@@ -158,10 +162,14 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
                 "version": latest.get("version", ""),
             },
         )
-        self.async_write_ha_state()
+        # installed_version now lives in coordinator.data, so re-rendering the
+        # entity is not enough - the coordinator has to re-read the disk.
+        await self.coordinator.async_request_refresh()
+
+
+def _make_download_dir() -> str:
+    return tempfile.mkdtemp(prefix="eiot_dl_")
 
 
 def _cleanup(path: Path) -> None:
-    import shutil
-
     shutil.rmtree(path, ignore_errors=True)
