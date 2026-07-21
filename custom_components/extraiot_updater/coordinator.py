@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -13,11 +14,30 @@ from .api import ExtraIotGatewayClient, GatewayAuthError, GatewayError
 from .const import (
     CONF_LICENSE_KEY,
     CONF_SERVER_URL,
+    CUSTOM_COMPONENTS,
     DOMAIN,
     UPDATE_INTERVAL,
 )
+from .installer import read_installed_version
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _read_installed_versions(
+    custom_components: Path, domains: tuple[str, ...]
+) -> dict[str, str | None]:
+    """Read every on-disk manifest in a single executor job.
+
+    Entities cannot do this themselves: ``UpdateEntity.installed_version`` is
+    a synchronous property that Home Assistant evaluates on the event loop,
+    and reading the manifest is blocking I/O. Batching the reads here costs
+    one executor hop per poll instead of one per entity per state write.
+    """
+    return {d: read_installed_version(custom_components, d) for d in domains}
+
+
+# Key under which the on-disk version is merged into each manifest entry.
+INSTALLED_KEY = "installed"
 
 
 class ExtraIotCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
@@ -45,4 +65,12 @@ class ExtraIotCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             raise UpdateFailed(f"License rejected: {err}") from err
         except GatewayError as err:
             raise UpdateFailed(f"Gateway unreachable: {err}") from err
-        return {i["domain"]: i for i in manifest.get("integrations", [])}
+        integrations = {i["domain"]: dict(i) for i in manifest.get("integrations", [])}
+        installed = await self.hass.async_add_executor_job(
+            _read_installed_versions,
+            Path(self.hass.config.path(CUSTOM_COMPONENTS)),
+            tuple(integrations),
+        )
+        for domain, entry in integrations.items():
+            entry[INSTALLED_KEY] = installed.get(domain)
+        return integrations

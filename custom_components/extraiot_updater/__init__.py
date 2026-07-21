@@ -72,9 +72,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 translation_key="removed_restart_required",
                 translation_placeholders={"name": domain},
             )
-        # Nudge entities to re-read installed_version from disk.
+        # installed_version is served from coordinator.data, so re-rendering
+        # the entities would just replay the pre-uninstall value. Refresh so
+        # the coordinator re-reads the disk.
         for coord in hass.data.get(DOMAIN, {}).values():
-            coord.async_update_listeners()
+            await coord.async_request_refresh()
 
     if not hass.services.has_service(DOMAIN, "check_now"):
         hass.services.async_register(DOMAIN, "check_now", _handle_check_now)

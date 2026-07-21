@@ -1,7 +1,7 @@
 {
   "domain": "extraiot_updater",
   "name": "Extra IOT Updater",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "documentation": "https://updates.extraiot.com.mx",
   "issue_tracker": "https://github.com/ExtraIoT/extraiot_updater/issues",
   "codeowners": ["@extraiot"],
