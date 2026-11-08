@@ -1,4 +1,9 @@
-"""Config flow: collect server URL + license key; options for file access."""
+"""Config flow: collect server URL + license key.
+
+Options flow (menu):
+- Install integrations: pick licensed integrations that aren't installed yet.
+- File access: enable + configure the gated file-access API.
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -11,7 +16,14 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .api import ExtraIotGatewayClient, GatewayAuthError, GatewayError
 from .const import (
@@ -23,6 +35,8 @@ from .const import (
     DEFAULT_SERVER_URL,
     DOMAIN,
 )
+
+CONF_INSTALL_DOMAINS = "domains"
 
 
 class ExtraIotConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -73,13 +87,99 @@ class ExtraIotConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class ExtraIotOptionsFlow(OptionsFlow):
-    """Enable + configure the gated file-access API."""
+    """Install new integrations, or configure the gated file-access API."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        return self.async_show_menu(
+            step_id="init", menu_options=["install", "file_access"]
+        )
+
+    # ------------------------------------------------------------------ #
+    # Install integrations
+    # ------------------------------------------------------------------ #
+    async def async_step_install(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        coordinator = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
+        if coordinator is None:
+            return self.async_abort(reason="not_loaded")
+
+        # Make sure the catalog and the on-disk state are current.
+        await coordinator.async_refresh()
+        available = sorted(coordinator.available_domains())
+        if not available:
+            return self.async_abort(reason="nothing_to_install")
+
+        errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"error": ""}
+
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            chosen = [d for d in user_input.get(CONF_INSTALL_DOMAINS, []) if d in available]
+            if not chosen:
+                errors["base"] = "none_selected"
+            else:
+                installed: list[str] = []
+                failed: list[str] = []
+                for domain in chosen:
+                    try:
+                        await coordinator.async_install(domain, refresh=False)
+                        installed.append(domain)
+                    except HomeAssistantError as err:
+                        failed.append(f"{domain}: {err}")
+                await coordinator.async_refresh()
+                if failed:
+                    errors["base"] = "install_failed"
+                    placeholders["error"] = "; ".join(failed)
+                    # Anything that did install is no longer offered.
+                    available = sorted(coordinator.available_domains())
+                    if not available:
+                        return self.async_abort(
+                            reason="install_failed_abort",
+                            description_placeholders=placeholders,
+                        )
+                else:
+                    # Options are unchanged; this step only performs installs.
+                    return self.async_create_entry(
+                        title="", data=dict(self.config_entry.options)
+                    )
+
+        options: list[SelectOptionDict] = []
+        for domain in available:
+            entry = coordinator.data[domain]
+            latest = entry.get("latest") or {}
+            label = f"{entry.get('name', domain)} ({latest.get('version', '?')})"
+            options.append(SelectOptionDict(value=domain, label=label))
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_INSTALL_DOMAINS, default=[]): SelectSelector(
+                    SelectSelectorConfig(
+                        options=options,
+                        multiple=True,
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="install",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
+        )
+
+    # ------------------------------------------------------------------ #
+    # File access
+    # ------------------------------------------------------------------ #
+    async def async_step_file_access(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                title="", data={**self.config_entry.options, **user_input}
+            )
 
         opts = self.config_entry.options
         schema = vol.Schema(
@@ -97,4 +197,4 @@ class ExtraIotOptionsFlow(OptionsFlow):
                 ): str,
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="file_access", data_schema=schema)

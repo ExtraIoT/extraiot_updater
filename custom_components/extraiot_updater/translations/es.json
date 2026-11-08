@@ -21,6 +21,21 @@
   "options": {
     "step": {
       "init": {
+        "title": "Extra IOT Updater",
+        "description": "¿Qué deseas hacer?",
+        "menu_options": {
+          "install": "Instalar integraciones",
+          "file_access": "API de acceso a archivos"
+        }
+      },
+      "install": {
+        "title": "Instalar integraciones",
+        "description": "Integraciones de Extra IOT con licencia que no están instaladas en este sistema. Selecciona las que quieras instalar. Cada una se verifica (firma + checksum) antes de escribirse, y es necesario reiniciar Home Assistant para cargarla.\n\n{error}",
+        "data": {
+          "domains": "Integraciones a instalar"
+        }
+      },
+      "file_access": {
         "title": "Acceso a archivos de Extra IOT",
         "description": "API de lectura/escritura de archivos bajo /config, restringida a administradores. Cada solicitud requiere además la clave compartida y (si se configura) una IP de origen permitida. Déjalo deshabilitado salvo que las herramientas de Extra IOT necesiten acceso a archivos.",
         "data": {
@@ -29,6 +44,15 @@
           "file_access_allowed_ips": "IPs/CIDRs de origen permitidos (separados por comas; vacío = cualquier origen)"
         }
       }
+    },
+    "error": {
+      "none_selected": "Selecciona al menos una integración.",
+      "install_failed": "Algunas integraciones no se pudieron instalar (detalles abajo)."
+    },
+    "abort": {
+      "not_loaded": "Extra IOT Updater no está cargado. Recarga la integración e inténtalo de nuevo.",
+      "nothing_to_install": "Todas las integraciones de Extra IOT con licencia ya están instaladas.",
+      "install_failed_abort": "Falló la instalación: {error}"
     }
   },
   "issues": {
@@ -45,6 +69,16 @@
     "check_now": {
       "name": "Buscar actualizaciones ahora",
       "description": "Fuerza una consulta inmediata al servidor de actualizaciones de Extra IOT."
+    },
+    "install": {
+      "name": "Instalar integración",
+      "description": "Instala (o reinstala) la última versión de una integración de Extra IOT con licencia y solicita un reinicio.",
+      "fields": {
+        "domain": {
+          "name": "Dominio de la integración",
+          "description": "Dominio de la integración a instalar (p. ej. extraiot_hikcentral)."
+        }
+      }
     },
     "uninstall": {
       "name": "Desinstalar integración",

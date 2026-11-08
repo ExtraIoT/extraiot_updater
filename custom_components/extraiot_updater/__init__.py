@@ -23,7 +23,15 @@ from .installer import uninstall_package
 
 PLATFORMS = [Platform.UPDATE, Platform.BUTTON]
 
-UNINSTALL_SCHEMA = vol.Schema({vol.Required("domain"): str})
+DOMAIN_SCHEMA = vol.Schema({vol.Required("domain"): str})
+
+
+def _coordinator_for(hass: HomeAssistant, domain: str) -> ExtraIotCoordinator | None:
+    """The coordinator whose license covers ``domain`` (None if none does)."""
+    for coord in hass.data.get(DOMAIN, {}).values():
+        if domain in (coord.data or {}):
+            return coord
+    return None
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -50,12 +58,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         for coord in hass.data.get(DOMAIN, {}).values():
             await coord.async_request_refresh()
 
+    async def _handle_install(call: ServiceCall) -> None:
+        domain = call.data["domain"]
+        coord = _coordinator_for(hass, domain)
+        if coord is None:
+            raise ServiceValidationError(
+                f"'{domain}' is not a licensed Extra IOT integration on this system"
+            )
+        # Also works on an installed integration (forces a reinstall of the
+        # latest release, e.g. to repair a damaged install).
+        await coord.async_install(domain)
+
     async def _handle_uninstall(call: ServiceCall) -> None:
         domain = call.data["domain"]
-        managed: set[str] = set()
-        for coord in hass.data.get(DOMAIN, {}).values():
-            managed |= set(coord.data or {})
-        if domain not in managed:
+        if _coordinator_for(hass, domain) is None:
             raise ServiceValidationError(
                 f"'{domain}' is not a licensed Extra IOT integration on this system"
             )
@@ -74,15 +90,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         # installed_version is served from coordinator.data, so re-rendering
         # the entities would just replay the pre-uninstall value. Refresh so
-        # the coordinator re-reads the disk.
+        # the coordinator re-reads the disk (this also removes the update
+        # entity, since only installed integrations have one).
         for coord in hass.data.get(DOMAIN, {}).values():
             await coord.async_request_refresh()
 
     if not hass.services.has_service(DOMAIN, "check_now"):
         hass.services.async_register(DOMAIN, "check_now", _handle_check_now)
+    if not hass.services.has_service(DOMAIN, "install"):
+        hass.services.async_register(
+            DOMAIN, "install", _handle_install, schema=DOMAIN_SCHEMA
+        )
     if not hass.services.has_service(DOMAIN, "uninstall"):
         hass.services.async_register(
-            DOMAIN, "uninstall", _handle_uninstall, schema=UNINSTALL_SCHEMA
+            DOMAIN, "uninstall", _handle_uninstall, schema=DOMAIN_SCHEMA
         )
 
     return True
@@ -94,6 +115,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         if not hass.data[DOMAIN]:
             hass.services.async_remove(DOMAIN, "check_now")
+            hass.services.async_remove(DOMAIN, "install")
             hass.services.async_remove(DOMAIN, "uninstall")
     # The registered HTTP view stays for the life of the HA process; it returns
     # 404 while disabled, so leaving it registered is harmless.

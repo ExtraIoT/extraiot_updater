@@ -21,6 +21,21 @@
   "options": {
     "step": {
       "init": {
+        "title": "Extra IOT Updater",
+        "description": "What do you want to do?",
+        "menu_options": {
+          "install": "Install integrations",
+          "file_access": "File access API"
+        }
+      },
+      "install": {
+        "title": "Install integrations",
+        "description": "Licensed Extra IOT integrations that are not installed on this system. Select the ones to install. Each one is verified (signature + checksum) before it is written, and Home Assistant must be restarted to load it.\n\n{error}",
+        "data": {
+          "domains": "Integrations to install"
+        }
+      },
+      "file_access": {
         "title": "Extra IOT file access",
         "description": "Admin-gated read/write API for files under /config. Every request also requires the shared key and (if set) an allowed source IP. Leave disabled unless Extra IOT tooling needs file access.",
         "data": {
@@ -29,6 +44,15 @@
           "file_access_allowed_ips": "Allowed source IPs / CIDRs (comma-separated; blank = any source)"
         }
       }
+    },
+    "error": {
+      "none_selected": "Select at least one integration.",
+      "install_failed": "Some integrations could not be installed (details below)."
+    },
+    "abort": {
+      "not_loaded": "The Extra IOT Updater is not loaded. Reload the integration and try again.",
+      "nothing_to_install": "Every licensed Extra IOT integration is already installed.",
+      "install_failed_abort": "Installation failed: {error}"
     }
   },
   "issues": {
@@ -45,6 +69,16 @@
     "check_now": {
       "name": "Check for updates now",
       "description": "Force an immediate poll of the Extra IOT update gateway."
+    },
+    "install": {
+      "name": "Install integration",
+      "description": "Install (or reinstall) the latest release of a licensed Extra IOT integration and prompt a restart.",
+      "fields": {
+        "domain": {
+          "name": "Integration domain",
+          "description": "Domain of the integration to install (e.g. extraiot_hikcentral)."
+        }
+      }
     },
     "uninstall": {
       "name": "Uninstall integration",
