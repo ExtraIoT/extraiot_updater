@@ -10,13 +10,18 @@ to private GitHub repos.
 3. **Settings → Devices & Services → Add Integration → Extra IOT Updater**.
 4. Enter the server URL (default `https://updates.extraiot.com.mx`) and your **license key**.
 
-Your licensed integrations then appear as **Update** entities. Click Install; when
-prompted, restart Home Assistant to load the new version.
+To install an integration: **Extra IOT Updater → Configure → Install integrations**,
+select the ones you want, then restart Home Assistant when prompted (or call the
+`extraiot_updater.install` service with the integration's domain).
+
+Once installed, each integration appears as an **Update** entity, so new versions
+show up in Home Assistant's normal updates list. Licensed integrations that are
+not installed never appear there, so "Update all" only updates what you run.
 
 ## How it works
 The integration polls the Extra IOT gateway every 6 hours (or via the
-`extraiot_updater.check_now` service), shows one update entity per licensed
-integration, and on install **verifies an Ed25519 signature and SHA-256 checksum**
+`extraiot_updater.check_now` service), shows one update entity per **installed**
+licensed integration, and on install **verifies an Ed25519 signature and SHA-256 checksum**
 before replacing files. Tampered or unsigned packages are refused.
 
 ## Security
