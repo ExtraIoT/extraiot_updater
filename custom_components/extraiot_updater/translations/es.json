@@ -90,5 +90,12 @@
         }
       }
     }
+  },
+  "entity": {
+    "switch": {
+      "beta": {
+        "name": "{name} canal beta"
+      }
+    }
   }
 }

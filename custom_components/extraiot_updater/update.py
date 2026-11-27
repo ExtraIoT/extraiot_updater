@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from awesomeversion import AwesomeVersion
 from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -19,7 +20,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import INSTALLED_KEY, ExtraIotCoordinator
+from .coordinator import INSTALLED_KEY, ExtraIotCoordinator, is_prerelease
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -93,7 +94,8 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
 
     @property
     def _latest(self) -> dict[str, Any]:
-        return self._entry.get("latest", {})
+        # Stable, or the beta when this integration's beta switch is on.
+        return self.coordinator.target(self._domain)[0]
 
     @property
     def installed_version(self) -> str | None:
@@ -107,9 +109,24 @@ class ExtraIotUpdateEntity(CoordinatorEntity[ExtraIotCoordinator], UpdateEntity)
     def latest_version(self) -> str | None:
         return self._latest.get("version")
 
+    def version_is_newer(self, latest_version: str, installed_version: str) -> bool:
+        if latest_version == installed_version:
+            return False
+        # Leaving the beta channel: running a beta, target is a stable. Offer
+        # the stable even when it is lower (beta abandoned), so the box can
+        # always get back to a released version.
+        if is_prerelease(installed_version) and not is_prerelease(latest_version):
+            return True
+        try:
+            return AwesomeVersion(latest_version) > AwesomeVersion(installed_version)
+        except Exception:  # noqa: BLE001
+            return latest_version != installed_version
+
     @property
     def release_summary(self) -> str | None:
-        notes = self._latest.get("changelog")
+        notes = self._latest.get("changelog") or ""
+        if is_prerelease(self.latest_version):
+            notes = f"BETA. {notes}"
         return notes[:255] if notes else None
 
     async def async_release_notes(self) -> str | None:
