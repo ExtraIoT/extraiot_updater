@@ -8,6 +8,9 @@ DOMAIN = "extraiot_updater"
 CONF_SERVER_URL = "server_url"
 CONF_LICENSE_KEY = "license_key"
 
+# Domains whose update entity follows the beta channel (switch per integration).
+CONF_BETA_DOMAINS = "beta_domains"
+
 DEFAULT_SERVER_URL = "https://updates.extraiot.com.mx"
 
 # How often to poll the gateway for new versions.

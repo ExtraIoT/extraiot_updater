@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import ExtraIotGatewayClient, GatewayAuthError, GatewayError
 from .const import (
+    CONF_BETA_DOMAINS,
     CONF_LICENSE_KEY,
     CONF_SERVER_URL,
     CUSTOM_COMPONENTS,
@@ -55,6 +56,11 @@ def _cleanup(path: Path) -> None:
 INSTALLED_KEY = "installed"
 
 
+def is_prerelease(version: str | None) -> bool:
+    """Beta builds carry a pre-release suffix, e.g. 1.3.0-beta.1."""
+    return bool(version) and "-" in version.split("+", 1)[0]
+
+
 class ExtraIotCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     """Keeps the manifest fresh. data = {domain: integration_entry}.
 
@@ -78,7 +84,7 @@ class ExtraIotCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         try:
-            manifest = await self.client.async_get_manifest()
+            manifest = await self.client.async_get_manifest(include_beta=True)
         except GatewayAuthError as err:
             # Surface as a clear, non-retrying auth problem.
             raise UpdateFailed(f"License rejected: {err}") from err
@@ -105,6 +111,41 @@ class ExtraIotCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         """Licensed integrations that are NOT installed on this system."""
         return set(self.data or {}) - self.installed_domains()
 
+    # ------------------------------------------------------------------ #
+    # Beta channel
+    # ------------------------------------------------------------------ #
+    def beta_domains(self) -> set[str]:
+        return set(self.entry.options.get(CONF_BETA_DOMAINS, []))
+
+    def is_beta(self, domain: str) -> bool:
+        return domain in self.beta_domains()
+
+    def target(self, domain: str) -> tuple[dict[str, Any], str | None]:
+        """Release this system should run for ``domain`` and its download URL.
+
+        Beta switch on and a beta newer than stable exists -> the beta.
+        Otherwise the newest stable. An integration that has only betas so
+        far (brand new) offers its beta either way.
+        """
+        entry = (self.data or {}).get(domain) or {}
+        beta = entry.get("latest_beta")
+        stable = entry.get("latest")
+        if beta and (self.is_beta(domain) or not stable):
+            return beta, entry.get("beta_download_url")
+        return stable or {}, entry.get("download_url")
+
+    async def async_set_beta(self, domain: str, enabled: bool) -> None:
+        domains = self.beta_domains()
+        if enabled:
+            domains.add(domain)
+        else:
+            domains.discard(domain)
+        self.hass.config_entries.async_update_entry(
+            self.entry,
+            options={**self.entry.options, CONF_BETA_DOMAINS: sorted(domains)},
+        )
+        self.async_update_listeners()
+
     @staticmethod
     def is_compatible(latest: dict[str, Any]) -> bool:
         min_ha = latest.get("min_ha_version")
@@ -129,7 +170,7 @@ class ExtraIotCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             raise HomeAssistantError(
                 f"'{domain}' is not a licensed Extra IOT integration"
             )
-        latest = entry.get("latest") or {}
+        latest, url = self.target(domain)
         if not latest:
             raise HomeAssistantError("No release information available")
         if not self.is_compatible(latest):
@@ -137,7 +178,6 @@ class ExtraIotCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 f"{domain} requires Home Assistant "
                 f"{latest.get('min_ha_version')} or newer"
             )
-        url = entry.get("download_url")
         if not url:
             raise HomeAssistantError("No download URL in manifest")
 

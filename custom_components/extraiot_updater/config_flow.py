@@ -148,8 +148,10 @@ class ExtraIotOptionsFlow(OptionsFlow):
         options: list[SelectOptionDict] = []
         for domain in available:
             entry = coordinator.data[domain]
-            latest = entry.get("latest") or {}
-            label = f"{entry.get('name', domain)} ({latest.get('version', '?')})"
+            latest = coordinator.target(domain)[0]
+            version = latest.get("version", "?")
+            beta = " - beta" if "-" in version else ""
+            label = f"{entry.get('name', domain)} ({version}{beta})"
             options.append(SelectOptionDict(value=domain, label=label))
 
         schema = vol.Schema(

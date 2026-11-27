@@ -38,8 +38,12 @@ class ExtraIotGatewayClient:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._license}"}
 
-    async def async_get_manifest(self) -> dict[str, Any]:
+    async def async_get_manifest(self, include_beta: bool = False) -> dict[str, Any]:
+        # Gateways older than the beta channel ignore the parameter and just
+        # return the stable catalog.
         url = f"{self._base}/api/v1/manifest"
+        if include_beta:
+            url += "?include_beta=1"
         try:
             async with self._session.get(
                 url, headers=self._headers, timeout=aiohttp.ClientTimeout(total=30)
